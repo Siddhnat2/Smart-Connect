@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+rsupport_config.json
+.env
+
+.gradle/
+local.properties
+*.apk
+*.jks
+*.keystore
+.idea/

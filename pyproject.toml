@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "remotesupport"
+version = "1.0.0"
+description = "Self-hosted, consent-based remote support app (PySide6): one app for the client and the technician"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6-Essentials>=6.6",
+    "websockets>=13",
+    "cryptography>=42",
+    "Pillow>=10",
+    "mss>=9",
+    "pynput>=1.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyinstaller>=6"]
+
+[project.gui-scripts]
+remotesupport = "rsupport.__main__:main"
+
+[project.scripts]
+remotesupport-cli = "rsupport.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["rsupport*"]

@@ -1,0 +1,3 @@
+support.example.com {
+    reverse_proxy relay:8765
+}

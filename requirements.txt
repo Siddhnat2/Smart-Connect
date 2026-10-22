@@ -1,0 +1,6 @@
+PySide6-Essentials>=6.6
+websockets>=13
+cryptography>=42
+Pillow>=10
+mss>=9
+pynput>=1.7
