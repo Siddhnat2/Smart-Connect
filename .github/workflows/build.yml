@@ -44,6 +44,7 @@ jobs:
   # ---------- Android APK (artifact name: RemoteSupport-Android-APK) ----------
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       # Optional: add these 4 repository secrets to sign with your own key (see android/README.md).
       # Without them the APK is signed with a debug key - still installable.
@@ -55,7 +56,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest already ships the Android SDK ($ANDROID_HOME). android-actions/setup-android@v3
+      # is NOT used: it asks sdkmanager for the legacy "tools" package, which the current
+      # cmdline-tools no longer has ("Failed to find package 'tools'"), so the job died there.
+      - name: Prepare Android SDK (licenses + platform 34 + build-tools 34.0.0)
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n 1)"
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true      # 'yes' gets SIGPIPE; that is expected
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.7" }
       - name: Use release keystore (if provided)
