@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
   release: { types: [published] }
 
+permissions:
+  contents: write   # only used to attach files to a GitHub Release
+
 jobs:
+  # ---------- Windows / macOS / Linux desktop apps ----------
   build:
     strategy:
       fail-fast: false
@@ -30,3 +34,43 @@ jobs:
         with:
           name: RemoteSupport-${{ runner.os }}
           path: dist/*
+
+  # ---------- Android APK (artifact name: RemoteSupport-Android-APK) ----------
+  android:
+    runs-on: ubuntu-latest
+    env:
+      # Optional: add these 4 repository secrets to sign with your own key (see android/README.md).
+      # Without them the APK is signed with a debug key - still installable.
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.7" }
+      - name: Use release keystore (if provided)
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+      - name: Unit tests (crypto must match the desktop app byte for byte)
+        working-directory: android
+        run: gradle --no-daemon testDebugUnitTest
+      - name: Build APK
+        working-directory: android
+        run: gradle --no-daemon assembleRelease
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk RemoteSupport.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RemoteSupport-Android-APK
+          path: RemoteSupport.apk
+      - name: Attach to the GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: RemoteSupport.apk

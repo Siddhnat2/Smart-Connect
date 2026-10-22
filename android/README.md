@@ -6,8 +6,8 @@ and lets you see and control that computer from your phone. It speaks the exact 
 
 ## Get the APK from GitHub (no Android Studio needed)
 1. Push this whole repository to GitHub (branch `main`).
-2. Open the **Actions** tab -> **Build Android APK** (it starts by itself on push; or press *Run workflow*).
-3. When it is green, open the run and download the artifact **RemoteSupport-Android-APK** -> `RemoteSupport.apk`.
+2. Open the **Actions** tab -> the latest **Build RemoteSupport** run. It now has 4 jobs: Windows, macOS, Linux and **android**.
+3. When it is green, open the run and download the artifact **RemoteSupport-Android-APK** (at the bottom of the run page, next to the Windows/macOS/Linux ones) -> `RemoteSupport.apk`.
 4. Copy it to the phone and open it (allow *Install unknown apps* once). Publishing a GitHub **Release**
    attaches `RemoteSupport.apk` to the release automatically.
 

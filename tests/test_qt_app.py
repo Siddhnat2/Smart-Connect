@@ -298,3 +298,33 @@ def test_navigation_and_clear_recents(env):
     assert env.tech.recent_list.count() == 1
     env.tech.clear_btn.click()
     assert env.tech.recent_list.count() == 0 and not env.tech.recent_empty.isHidden()
+
+
+def test_permanent_password_survives_restart(env):
+    c = env.client
+    c.perm_toggle.click()                                   # keep the password that is shown now
+    shown = c.pw_edit.text()
+    assert c.s.value("perm_pw") == shown
+    c2 = env.make("client", agent_kwargs=dict(capturer=FakeCapturer(), injector=RecInjector(), iters=1000),
+                  port=free_port(), autostart=False)       # same settings file = "app restarted"
+    assert c2.host.password == shown and c2.pw_edit.text() == shown and c2.perm_toggle.isChecked()
+
+
+def test_own_password_is_validated_saved_and_accepted(env):
+    c = env.client
+    c.own_pw.setText("short")
+    c.own_pw_btn.click()
+    assert "8" in c.own_pw_msg.text() and c.pw_edit.text() != "short"
+    c.own_pw.setText("MyLaptop#2026")
+    c.own_pw_btn.click()
+    assert c.pw_edit.text() == "MyLaptop#2026" and c.perm_toggle.isChecked()
+    time.sleep(0.3); QApplication.processEvents()
+    env.connect(password="MyLaptop#2026")
+    wait_for(lambda: env.tech.remote_win is not None, what="own password accepted")
+
+
+def test_without_permanent_mode_password_changes_each_start(env):
+    first = env.client.pw_edit.text()
+    c2 = env.make("client", agent_kwargs=dict(capturer=FakeCapturer(), injector=RecInjector(), iters=1000),
+                  port=free_port(), autostart=False)
+    assert c2.host.password != first

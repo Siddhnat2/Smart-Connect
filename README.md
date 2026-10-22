@@ -37,7 +37,7 @@ Give the same file to every client and use it yourself.
 ## Android app (technician)
 A native Android app lives in [`android/`](android/README.md). It connects to this desktop app (same protocol,
 same encryption) so you can see and control a client's PC from your phone. Push the repo to GitHub and the
-**Build Android APK** workflow (`.github/workflows/android.yml`) produces `RemoteSupport.apk` as a downloadable artifact.
+**Build RemoteSupport** workflow (`.github/workflows/build.yml`, job `android`) produces `RemoteSupport.apk` as a downloadable artifact.
 
 ## Using it across the internet (no server of yours)
 A direct connection needs the client's PC to be reachable. Home routers block incoming connections, so choose one:
@@ -97,9 +97,16 @@ rsupport/ui/                PySide6 app: main_window.py, remote.py, widgets.py, 
 rsupport/host.py            client-side engine (capture, auth, input injection)   viewer.py  technician-side engine
 rsupport/crypto.py          handshake + AES-GCM          capture.py / inputctl.py  screen + input   relay.py  optional relay
 scripts/build.py            one-command packaging        .github/workflows/build.yml  CI for Win/macOS/Linux
-android/                    Android app (Kotlin)         .github/workflows/android.yml  CI that builds the APK
+android/                    Android app (Kotlin)         (job "android" builds the APK)
 tests/                      pytest suite + live tests    deploy/  optional relay (Docker + Caddy) if you ever want one
 ```
 CLI extras: `python -m rsupport host` (headless agent), `snapshot`, `relay`, `selftest`.
 
 **Use only on computers whose owner has agreed to the session.**
+
+## Permanent password
+By default a new random password is made every time the app starts. In **Settings -> Password** turn on
+*Keep the same password every time* (keeps the one shown now), or type your own (8+ characters) and press
+*Save password*. It is then the same after every restart until you change it. *New password* on the first page still
+makes a fresh random one (which then becomes the permanent one). The password is stored in this computer's user
+settings (registry / plist / ~/.config), so use a password you do not reuse elsewhere; every connection still needs *Allow*.

@@ -11,7 +11,7 @@ from PySide6.QtGui import QAction, QGuiApplication
 from PySide6.QtNetwork import QAbstractSocket, QNetworkInterface
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel,
                                QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMenu,
-                               QMessageBox, QPushButton, QSpinBox, QStackedWidget, QSystemTrayIcon,
+                               QMessageBox, QPushButton, QScrollArea, QSpinBox, QStackedWidget, QSystemTrayIcon,
                                QVBoxLayout, QWidget)
 
 from .. import __version__
@@ -89,7 +89,10 @@ class MainWindow(QMainWindow):
 
         uid = self.s.value("id") or gen_username()
         self.s.setValue("id", uid)
-        self.host = HostController(self.runner, uid, gen_password(), agent_kwargs)
+        perm_on = self.s.value("perm_pw_on", False, type=bool)
+        perm_pw = str(self.s.value("perm_pw", "") or "")
+        start_pw = perm_pw if (perm_on and perm_pw) else gen_password()   # permanent password survives restarts
+        self.host = HostController(self.runner, uid, start_pw, agent_kwargs)
         self.host.apply_quality(self.s.value("quality", "balanced"))
         self.host.status.connect(self.on_host_status)
         self.host.consent.connect(self.on_consent)
@@ -307,6 +310,31 @@ class MainWindow(QMainWindow):
 
     def _build_settings_page(self):
         page, lay = _page("Settings", "Changes are saved automatically.")
+        c0 = Card("Password")
+        self.perm_toggle = ToggleSwitch(self.s.value("perm_pw_on", False, type=bool)
+                                        and bool(self.s.value("perm_pw", "")))
+        self.perm_toggle.clicked.connect(self.on_perm_toggled)
+        c0.body.addWidget(_row("Keep the same password every time",
+                               "The password no longer changes when the app restarts. It is saved on this computer.",
+                               self.perm_toggle))
+        c0.body.addWidget(divider())
+        own = QWidget()
+        own_l = QHBoxLayout(own)
+        own_l.setContentsMargins(0, 0, 0, 0)
+        self.own_pw = QLineEdit()
+        self.own_pw.setEchoMode(QLineEdit.Password)
+        self.own_pw.setPlaceholderText("Type your own password (8+ characters)")
+        self.own_pw.setMinimumWidth(260)
+        self.own_pw.returnPressed.connect(self.set_own_password)
+        self.own_pw_btn = QPushButton("Save password")
+        self.own_pw_btn.setObjectName("primary")
+        self.own_pw_btn.clicked.connect(self.set_own_password)
+        own_l.addWidget(self.own_pw, 1)
+        own_l.addWidget(self.own_pw_btn)
+        c0.body.addWidget(own)
+        self.own_pw_msg = label("", "hint", True)
+        c0.body.addWidget(self.own_pw_msg)
+        lay.addWidget(c0)
         c1 = Card("Sharing")
         self.autostart_toggle = ToggleSwitch(self.s.value("autostart", True, type=bool))
         self.autostart_toggle.clicked.connect(lambda on: self.s.setValue("autostart", on))
@@ -352,7 +380,15 @@ class MainWindow(QMainWindow):
             c3.body.addLayout(r)
         lay.addWidget(c3)
         lay.addStretch()
-        return page
+        # Scrollable, so the cards keep their natural height on small windows instead of being squashed.
+        page.setMinimumHeight(lay.sizeHint().height())
+        sa = QScrollArea()
+        sa.setWidgetResizable(True)
+        sa.setFrameShape(QFrame.NoFrame)
+        sa.setObjectName("settingsScroll")
+        sa.setStyleSheet("#settingsScroll, #settingsScroll > QWidget > QWidget { background: transparent; }")
+        sa.setWidget(page)
+        return sa
 
     def _build_tray(self):
         self.tray = None
@@ -455,6 +491,30 @@ class MainWindow(QMainWindow):
         pw = gen_password()
         self.host.set_password(pw)
         self.pw_edit.setText(pw)
+        if self.perm_toggle.isChecked():          # permanent mode: the new one becomes the permanent one
+            self.s.setValue("perm_pw", pw)
+
+    def on_perm_toggled(self, on):
+        self.s.setValue("perm_pw_on", bool(on))
+        if on:
+            self.s.setValue("perm_pw", self.host.password)    # keep exactly the password shown now
+            self.own_pw_msg.setText("This password is now permanent.")
+        else:
+            self.s.remove("perm_pw")
+            self.own_pw_msg.setText("A new random password will be made each time the app starts.")
+
+    def set_own_password(self):
+        pw = self.own_pw.text()
+        if len(pw) < 8:
+            self.own_pw_msg.setText("Use at least 8 characters.")
+            return
+        self.host.set_password(pw)
+        self.pw_edit.setText(pw)
+        self.s.setValue("perm_pw", pw)
+        self.s.setValue("perm_pw_on", True)
+        self.perm_toggle.setChecked(True)
+        self.own_pw.clear()
+        self.own_pw_msg.setText("Saved. This password will be used every time.")
 
     def copy_details(self):
         QGuiApplication.clipboard().setText(
