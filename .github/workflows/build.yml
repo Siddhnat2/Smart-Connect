@@ -30,6 +30,12 @@ jobs:
         env: { QT_QPA_PLATFORM: offscreen }
       - name: Build single-file app and smoke-test it
         run: python scripts/build.py
+      - name: Zip the macOS app (one file uploads far more reliably than ~1000 loose files)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          ditto -c -k --keepParent RemoteSupport.app RemoteSupport-macOS.zip
+          rm -rf RemoteSupport.app
       - uses: actions/upload-artifact@v4
         with:
           name: RemoteSupport-${{ runner.os }}
